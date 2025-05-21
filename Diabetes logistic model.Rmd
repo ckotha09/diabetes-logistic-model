@@ -1,0 +1,359 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#Installing and loading necessary Package:
+Loading the 'readr' package for data reading functions, 'dplyr' for data manipulation, 'ggplot2' for data visualization.
+
+```{r}
+install.packages("ggplot2")
+install.packages("caret")
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gmodels)
+library(package = "lsr")
+library(caret)
+```
+
+
+
+#Importing data from a CSV file into a dataframe named 'diabetes_prediction_dataset'
+```{r}
+diabetes_data <- read_csv("diabetes_prediction_dataset.csv")
+```
+Dataset was imported and labelled as diabetes_data.The data has 9 variables with 100000 observations.
+
+
+#Displaying the initial rows of the dataframe to check its structure
+```{r}
+head(diabetes_data)
+```
+The initial rows of the dataset is displayed using head() function.
+
+
+#Conduct a descriptive statistical summary of the data
+```{r}
+summary(diabetes_data)
+```
+Summary of diabetes data is displayed using summary() function.
+
+
+#Checking the missing values
+```{r}
+sum(is.na(diabetes_data))
+```
+The dataset does not contain any missing values.
+
+
+Structure of the diabetes data
+```{r}
+str(diabetes_data)
+```
+
+Categorical variables are converted into factor using as.factor()
+```{r}
+diabetes_data$gender <- as.factor(diabetes_data$gender)
+diabetes_data$hypertension <- as.factor(diabetes_data$hypertension)
+diabetes_data$heart_disease <- as.factor(diabetes_data$heart_disease)
+diabetes_data$smoking_history <- as.factor(diabetes_data$smoking_history)
+```
+
+Structure od the data after converting into factor
+```{r}
+str(diabetes_data)
+```
+
+Recoding diabetes , hypertension, heart disease variables
+```{r}
+diabetes.cleaned <- diabetes_data %>%
+    mutate(diabetes = recode_factor(.x = diabetes,
+                    `1` = 'diabetic',
+                    `0` = 'non-diabetic')) %>%
+    mutate(hypertension = recode_factor(.x = hypertension,
+                    `1` = 'hypertensive',
+                    `0` = 'non-hypertensive')) %>%
+    mutate(heart_disease = recode_factor(.x = heart_disease,
+                    `1` = 'Heart disease',
+                    `0` = 'No heart disease'))
+```
+Recoded variables are assigned to diabetes.cleaned data.
+
+Summary of the cleaned dataset using summary() function
+```{r}
+summary(object = diabetes.cleaned)
+```
+
+The cleaned datset is viewed
+```{r}
+View(diabetes.cleaned)
+```
+
+
+
+#DATA VISUALIZATION
+1. Histogram for Age 
+```{r}
+age_hist <- ggplot(diabetes.cleaned, aes(x = age)) +
+  geom_histogram(bins = 20, fill = "#6baed6") +
+  labs(title = "Distribution of Age", x = "Age", y = "Frequency") +
+  theme_minimal()
+print(age_hist)
+```
+Interpretation: Among all the age groups in the data, geriatrics individuals aged 40 years, 80 years are higher. 
+
+
+2. Bar graph for gender
+```{r}
+ggplot(diabetes.cleaned, aes(x = gender)) +
+  geom_bar(fill = "skyblue", color = "black") +
+  labs(title = "Gender Distribution", x = "Gender", y = "Count")
+```
+Interpretation: In the data, females are higher than males followed by others. 
+
+
+3.Scatter plot for age and Hba1c level comparision
+```{r}
+age_hbA1c_plot <- ggplot(diabetes.cleaned, aes(x = age, y = HbA1c_level)) +
+  geom_point(aes(color = HbA1c_level), alpha = 0.6) +
+  scale_color_gradient(low = "#fd8d3c", high = "#7f2704") +
+  labs(title = "Scatter Plot of Age vs. HbA1c Levels", x = "Age", y = "HbA1c Level") +
+  theme_minimal()
+print(age_hbA1c_plot)
+```
+Interpretation: People above 35 years have HbA1c values >7 which confirms diabetes and rest of the age groups have HbA1c values normal which is non diabetic.
+
+
+4.Bar Graph for Diabetes Prevalence
+```{r}
+diabetes_bar <- ggplot(diabetes.cleaned, aes(x = factor(diabetes), fill = factor(diabetes))) +
+  geom_bar() +
+  scale_fill_manual(values = c("0" = "#1f77b4", "1" = "#ff7f0e"), labels = c("No (0)", "Yes (1)")) +
+  labs(title = "Prevalence of Diabetes", x = "Diabetes Status", y = "Count") +
+  theme_minimal()
+print(diabetes_bar)
+```
+Interpretation: Among all the individuals non-diabetic individuals are higher than diabetic individuals.
+
+5.Scatter plot for Blood glucose level and Hba1c level comparision
+```{r}
+bg_hba1c_point <- ggplot(diabetes.cleaned, aes(x = blood_glucose_level, y = HbA1c_level, color = gender)) +
+  geom_point(alpha = 0.6) +
+  scale_color_manual(values = c("Female" = "#f768a1", "Male" = "#1d91c0")) +
+  labs(title = "Blood Glucose and HbA1c Levels by Gender", x = "Blood Glucose Level", y = "HbA1c Level") +
+  theme_minimal()
+print(bg_hba1c_point)
+```
+Interpretation: People having higher blood glucose levels have higher HbA1c values in both genders(male and females).
+
+
+
+#Data management
+```{r}
+# Function to remove outliers based on IQR
+remove_outliers <- function(data, column) {
+  Q1 <- quantile(data[[column]], 0.25)
+  Q3 <- quantile(data[[column]], 0.75)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  data[data[[column]] >= lower_bound & data[[column]] <= upper_bound, ]
+}
+
+
+# Applying outlier removal for BMI
+diabetes.cleaned.final <- remove_outliers(diabetes.cleaned, "bmi")
+
+# Applying outlier removal for HbA1c Level
+diabetes.cleaned.final <- remove_outliers(diabetes.cleaned, "HbA1c_level")
+
+# Applying outlier removal for Blood Glucose Level
+diabetes.cleaned.final <- remove_outliers(diabetes.cleaned, "blood_glucose_level")
+```
+
+In the data management process for the diabetes prediction dataset, several key steps were undertaken to prepare the data for robust statistical analysis and modeling. First, missing values were eliminated by removing any rows that contained incomplete data, ensuring that analyses were conducted on fully observed cases. Additionally, categorical variables such as 'gender' and 'smoking_history' were converted from textual to numerical formats, assigning discrete numerical codes to each category to facilitate their use in statistical models. Outliers were also addressed by applying a method based on the interquartile range (IQR), removing data points that fell significantly outside the typical range of observed values. These steps were critical for maintaining data integrity and ensuring the reliability of the dataset for further analysis.
+
+
+```{r}
+summary(diabetes.cleaned.final)
+```
+
+
+##Statistical Analysis and Assumptions:
+CHI SQUARE TEST:
+As the dependent variable (diabetes) is a binary variable the appropriate test performed is Chi-square test.It is done for two categorical variables.
+
+1. For diabetes and gender
+Null Hypothesis (H0): There is no association between diabetes and gender.
+Alternate Hypothesis (H1): There is an association between diabetes and gender.
+
+```{r}
+chisq.test(x = diabetes.cleaned$diabetes, y = diabetes.cleaned$gender)
+```
+The test statistic is χ2 : 143.22
+p < 0.05  = Rejecting Null Hypothesis
+Interpretation: Chi-squared test is used to test the null hypothesis. There was relationship between  on diabetes and gender. We rejected the null hypothesis and concluded that there was a relationship between diabetes and gender. [χ2 = 143.22; p < 0.05].
+
+
+2. For diabetes and smoking history
+Null Hypothesis (H0): There is no association between diabetes and smoking history.
+Alternate Hypothesis (H1): There is an association between diabetes and smoking history.
+```{r}
+chisq.test(x = diabetes.cleaned$diabetes, y = diabetes.cleaned$smoking_history)
+```
+The test statistic is χ2 : 1956.1
+p < 0.05  = Rejecting Null Hypothesis
+Interpretation: Chi-squared test is used to test the null hypothesis. There was relationship between  on diabetes and smoking history. We rejected the null hypothesis and concluded that there was a relationship between diabetes and smoking history. [χ2 = 1956.1; p < 0.05].
+
+
+3. For diabetes and heart disease
+Null Hypothesis (H0): There is no association between diabetes and heart disease.
+Alternate Hypothesis (H1): There is an association between diabetes and heart disease.
+```{r}
+chisq.test(x = diabetes.cleaned$diabetes, y = diabetes.cleaned$heart_disease)
+```
+The test statistic is χ2 : 2945.8
+p < 0.05  = Rejecting Null Hypothesis
+Interpretation: Chi-squared test is used to test the null hypothesis. There was relationship between  on diabetes and heart disease. We rejected the null hypothesis and concluded that there was a relationship between diabetes and heart disease. [χ2 = 2945.8; p < 0.05].
+
+
+4. For diabetes and hypertension
+Null Hypothesis (H0): There is no association between diabetes and hypertension.
+Alternate Hypothesis (H1): There is an association between diabetes and hypertension.
+```{r}
+chisq.test(x = diabetes.cleaned$diabetes, y = diabetes.cleaned$hypertension)
+```
+The test statistic is χ2 : 3910.7
+p < 0.05  = Rejecting Null Hypothesis
+Interpretation: Chi-squared test is used to test the null hypothesis. There was relationship between  on diabetes and hypertension. We rejected the null hypothesis and concluded that there was a relationship between diabetes and hypertension. [χ2 = 3910.7; p < 0.05].
+
+
+#ASSUMPTIONS
+Assumption-1: Variables must be nominal or ordinal.
+In this data, the gender, hypertension, heart disease, smoking history are nominal variables and Hba1c, age, bmi are ordinal variables. So, this assumption is met
+
+Assumption-2: Expected values of 5 or higher in at least 80% of groups
+The frequencies for each category (sex and ease of voting) are calculated and all groups have expected values that are greater than 5. So, this assumption is met.
+
+Assumption-3: Independent observations
+In this data, no gender group is impacted by other gender group. No data from related people or repeated measurements on the same individuals are present. So, this assumption is met.
+
+
+
+#Standard residuals
+```{r}
+CrossTable(x = diabetes.cleaned$diabetes,
+           y = diabetes.cleaned$smoking_history,
+           expected = TRUE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE,
+           chisq = TRUE,
+           sresid = TRUE)
+```
+Interpretation: There was a statistically significant relationship between diabetes and smoking history [χ2(1) = 1956.094; p = 0]. 
+
+
+```{r}
+CrossTable(x = diabetes.cleaned$diabetes,
+           y = diabetes.cleaned$gender,
+           expected = TRUE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE,
+           chisq = TRUE,
+           sresid = TRUE)
+```
+Interpretation: There was a statistically significant relationship between diabetes and gender [χ2(1) = 143.2183; p = 7.953384e-32]. 
+
+
+
+#Effect size
+1. Diabetes, gender
+```{r}
+cramersV(x = diabetes.cleaned$diabetes, y = diabetes.cleaned$gender)
+```
+Interpretation: There is a statistically significant relationship between opinions on diabetes and smoking history, and the relationship is weak to moderate. 
+
+2.For diabetes, smoking history
+```{r}
+cramersV(x = diabetes.cleaned$diabetes, y = diabetes.cleaned$smoking_history)
+```
+Interpretation: There is a statistically significant relationship between opinions on diabetes and smoking history, and the relationship is weak or small. 
+
+3.For diabetes, heart disease
+```{r}
+cramersV(x = diabetes.cleaned$diabetes, y = diabetes.cleaned$heart_disease)
+```
+Interpretation: There is a statistically significant relationship between opinions on diabetes and heart disease, and the relationship is weak or small. 
+
+4.For diabetes, hypertension
+```{r}
+cramersV(x = diabetes.cleaned$diabetes, y = diabetes.cleaned$hypertension)
+```
+Interpretation: There is a statistically significant relationship between opinions on diabetes and hypertension, and the relationship is weak or small. 
+
+
+
+#FINAL MODEL-LOGISTIC REGRESSION: For diabetes (Binary variable)
+Logistic Regression for one variable
+Null Hypothesis (H0): Age has no effect on the likelihood of having diabetes. The coefficient for age in the logistic regression model is zero, indicating no relationship between age and the probability of being diagnosed with diabetes.
+Alternate Hypothesis (H1): Age does affect the likelihood of having diabetes. The coefficient for age in the logistic regression model is not zero, indicating a relationship where the probability of being diagnosed with diabetes changes with age.
+
+
+```{r}
+logistic_model_age <- glm(diabetes ~ age, family = binomial(), data = diabetes_data)
+summary(logistic_model_age)
+```
+According to the findings, age is a key predictor of diabetes status, with older people often having a lower odds of receiving a diabetes diagnosis than younger people.
+
+
+
+```{r}
+set.seed(32)
+```
+
+
+```{r}
+training_indices <- sample(1:nrow(diabetes.cleaned), 0.75 * nrow(diabetes.cleaned))  # for reproducibility
+```
+
+
+```{r}
+train_data <- heart_failure_data_model[training_indices, ]
+test_data <- heart_failure_data_model[-training_indices, ]
+```
+
+```{r}
+model <- glm(diabetes ~ age + gender + bmi + hypertension + heart_disease + smoking_history + HbA1c_level + blood_glucose_level,
+             family = binomial(), data = train_data)
+```
+
+```{r}
+test_data$predicted_prob <- predict(model, newdata = test_data, type = "response")
+test_data$predicted_class <- ifelse(test_data$predicted_prob > 0.5, 1, 0)
+```
+
+```{r}
+confusionMatrix(factor(test_data$predicted_class), factor(test_data$diabetes))
+```
+
+
+```{r}
+predictions <- predict(model, test_data, type = "response")
+predicted_classes <- ifelse(predictions > 0.5, 1, 0)
+```
+
+```{r}
+actual_classes <- test_data$diabetes
+correct_predictions <- predicted_classes == actual_classes
+accuracy <- sum(correct_predictions) / length(correct_predictions)
+print(paste("Accuracy of the model:", accuracy))
+```
+
+
+
