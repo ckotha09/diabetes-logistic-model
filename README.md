@@ -44,7 +44,9 @@ To predict the presence of diabetes in patients using health and lifestyle facto
 - Gender might not be significantly associated with diabetes (as tested using chi-square).
 - Proper label encoding and balancing are essential for model reliability.
 
----
+
+## Acknowledgments
+This project was completed as part of the Health Data Science curriculum at Saint Louis University.
 
 
 
